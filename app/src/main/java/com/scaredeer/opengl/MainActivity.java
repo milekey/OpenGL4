@@ -261,7 +261,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         Z 軸も奥に向って正方向となり、色々と感覚的にシームレスになる。これが upY = -1 の理由である。
         また、centerX/centerY は視線を常に z 軸に平行とするため、eyeX/eyeY と共通にする。
         eyeZ については本来は任意なのだが、わかりやすいので画面横幅を斜辺とする直角二等辺三角形になるようにする値を
-        選ぶ（つまり width/2 の距離）。かつ z = 0 が、斜辺の位置とする（つまり z 座標はl -width/2）。
+        選ぶ（つまり width/2 の距離）。かつ z = 0 が、斜辺の位置とする（つまり z 座標は -width/2）。
         eyeZ = -eyeX となっているわけである。
          */
         setLookAtM(
