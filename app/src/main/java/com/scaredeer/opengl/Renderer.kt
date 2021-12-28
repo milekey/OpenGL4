@@ -225,9 +225,6 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
             // It will look the same because of texture coordinates, and mipmap generation will work.
             GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D)
 
-            // Recycle the bitmap, since its data has been loaded into OpenGL.
-            bitmap.recycle()
-
             // Unbind from the texture.
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
             return textureObjectIds[0]
@@ -318,7 +315,10 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
             mVertexData
         )
         GLES20.glEnableVertexAttribArray(aTextureCoordinates)
+
         mTexture = loadTextureFromBitmap(mBitmap)
+        // Recycle the bitmap, since its data has been loaded into OpenGL.
+        mBitmap.recycle()
     }
 
     override fun onSurfaceChanged(gl10: GL10, width: Int, height: Int) {
