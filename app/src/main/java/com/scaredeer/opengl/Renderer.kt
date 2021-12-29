@@ -2,18 +2,17 @@ package com.scaredeer.opengl
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.opengl.GLSurfaceView
-import javax.microedition.khronos.opengles.GL10
-import android.opengl.GLES20
-import android.opengl.GLUtils
 import android.graphics.BitmapFactory
 import android.opengl.GLES20.*
+import android.opengl.GLSurfaceView
+import android.opengl.GLUtils
 import android.opengl.Matrix
 import android.util.Log
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 /**
  * ゲームのメインループに相当するクラス
