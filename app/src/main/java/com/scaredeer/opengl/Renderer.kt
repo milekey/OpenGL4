@@ -7,6 +7,7 @@ import javax.microedition.khronos.opengles.GL10
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.graphics.BitmapFactory
+import android.opengl.GLES20.*
 import android.opengl.Matrix
 import android.util.Log
 import java.nio.ByteBuffer
@@ -87,34 +88,34 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          */
         private fun compileShader(type: Int, shaderCode: String): Int {
             // Create a new shader object.
-            val shaderObjectId = GLES20.glCreateShader(type)
+            val shaderObjectId = glCreateShader(type)
             if (shaderObjectId == 0) {
                 Log.w(TAG, "Could not create new shader.")
                 return 0
             }
 
             // Pass in (upload) the shader source.
-            GLES20.glShaderSource(shaderObjectId, shaderCode)
+            glShaderSource(shaderObjectId, shaderCode)
 
             // Compile the shader.
-            GLES20.glCompileShader(shaderObjectId)
+            glCompileShader(shaderObjectId)
 
             // Get the compilation status.
             val compileStatus = IntArray(1)
-            GLES20.glGetShaderiv(shaderObjectId, GLES20.GL_COMPILE_STATUS, compileStatus, 0)
+            glGetShaderiv(shaderObjectId, GL_COMPILE_STATUS, compileStatus, 0)
 
             // Print the shader info log to the Android log output.
             Log.v(TAG, """
             Result of compiling source:
                 $shaderCode
             Log:
-                ${GLES20.glGetShaderInfoLog(shaderObjectId)}
+                ${glGetShaderInfoLog(shaderObjectId)}
             """.trimIndent())
 
             // Verify the compile status.
             if (compileStatus[0] == 0) {
                 // If it failed, delete the shader object.
-                GLES20.glDeleteShader(shaderObjectId)
+                glDeleteShader(shaderObjectId)
                 Log.w(TAG, "Compilation of shader failed.")
                 return 0
             }
@@ -134,34 +135,34 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          */
         private fun linkProgram(vertexShaderId: Int, fragmentShaderId: Int): Int {
             // Create a new program object.
-            val programObjectId = GLES20.glCreateProgram()
+            val programObjectId = glCreateProgram()
             if (programObjectId == 0) {
                 Log.w(TAG, "Could not create new program")
                 return 0
             }
 
             // Attach the vertex shader to the program.
-            GLES20.glAttachShader(programObjectId, vertexShaderId)
+            glAttachShader(programObjectId, vertexShaderId)
             // Attach the fragment shader to the program.
-            GLES20.glAttachShader(programObjectId, fragmentShaderId)
+            glAttachShader(programObjectId, fragmentShaderId)
 
             // Link the two shaders together into a program.
-            GLES20.glLinkProgram(programObjectId)
+            glLinkProgram(programObjectId)
 
             // Get the link status.
             val linkStatus = IntArray(1)
-            GLES20.glGetProgramiv(programObjectId, GLES20.GL_LINK_STATUS, linkStatus, 0)
+            glGetProgramiv(programObjectId, GL_LINK_STATUS, linkStatus, 0)
 
             // Print the program info log to the Android log output.
             Log.v(TAG, """
                 Result log of linking program:
-                ${GLES20.glGetProgramInfoLog(programObjectId)}
+                ${glGetProgramInfoLog(programObjectId)}
             """.trimIndent())
 
             // Verify the link status.
             if (linkStatus[0] == 0) {
                 // If it failed, delete the program object.
-                GLES20.glDeleteProgram(programObjectId)
+                glDeleteProgram(programObjectId)
                 Log.w(TAG, "Linking of program failed.")
                 return 0
             }
@@ -178,13 +179,13 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          * @return boolean
          */
         private fun validateProgram(programObjectId: Int): Boolean {
-            GLES20.glValidateProgram(programObjectId)
+            glValidateProgram(programObjectId)
             val validateStatus = IntArray(1)
-            GLES20.glGetProgramiv(programObjectId, GLES20.GL_VALIDATE_STATUS, validateStatus, 0)
+            glGetProgramiv(programObjectId, GL_VALIDATE_STATUS, validateStatus, 0)
             Log.v(TAG, """
                 Result status code of validating program: ${validateStatus[0]}
                 Log:
-                ${GLES20.glGetProgramInfoLog(programObjectId)}
+                ${glGetProgramInfoLog(programObjectId)}
             """.trimIndent())
             return validateStatus[0] != 0
         }
@@ -195,38 +196,30 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          */
         fun loadTextureFromBitmap(bitmap: Bitmap): Int {
             val textureObjectIds = IntArray(1)
-            GLES20.glGenTextures(1, textureObjectIds, 0)
+            glGenTextures(1, textureObjectIds, 0)
             if (textureObjectIds[0] == 0) {
                 Log.w(TAG, "Could not generate a new OpenGL texture object.")
                 return 0
             }
 
             // Bind to the texture in OpenGL
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureObjectIds[0])
+            glBindTexture(GL_TEXTURE_2D, textureObjectIds[0])
 
             // Set filtering: a default must be set, or the texture will be black.
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_MIN_FILTER,
-                GLES20.GL_NEAREST
-            )
-            GLES20.glTexParameteri(
-                GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_MAG_FILTER,
-                GLES20.GL_NEAREST
-            )
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
             // Load the bitmap into the bound texture.
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+            GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0)
 
             // Note: Following code may cause an error to be reported in the ADB log as follows:
             // E/IMGSRV(20095): :0: HardwareMipGen: Failed to generate texture mipmap levels (error=3)
             // No OpenGL error will be encountered (glGetError() will return0).
             // If this happens, just squash the source image to be square.
             // It will look the same because of texture coordinates, and mipmap generation will work.
-            GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D)
+            glGenerateMipmap(GL_TEXTURE_2D)
 
             // Unbind from the texture.
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+            glBindTexture(GL_TEXTURE_2D, 0)
             return textureObjectIds[0]
         }
 
@@ -269,52 +262,52 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
 
     override fun onSurfaceCreated(gl10: GL10, eglConfig: EGLConfig) {
         Log.v(TAG, "onSurfaceCreated")
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
 
         // Compile the shaders.
-        val vertexShader = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER)
-        val fragmentShader = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER)
+        val vertexShader = compileShader(GL_VERTEX_SHADER, VERTEX_SHADER)
+        val fragmentShader = compileShader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER)
 
         // Link them into a shader program.
         val program = linkProgram(vertexShader, fragmentShader)
         validateProgram(program)
 
         // Use this program.
-        GLES20.glUseProgram(program)
+        glUseProgram(program)
 
         // Retrieve uniform locations for the shader program.
-        uMVPMatrix = GLES20.glGetUniformLocation(program, U_MVP_MATRIX)
-        uTextureUnit = GLES20.glGetUniformLocation(program, U_TEXTURE_UNIT)
+        uMVPMatrix = glGetUniformLocation(program, U_MVP_MATRIX)
+        uTextureUnit = glGetUniformLocation(program, U_TEXTURE_UNIT)
 
         // Retrieve attribute locations for the shader program.
-        aPosition = GLES20.glGetAttribLocation(program, A_POSITION)
-        aTextureCoordinates = GLES20.glGetAttribLocation(program, A_TEXTURE_COORDINATES)
+        aPosition = glGetAttribLocation(program, A_POSITION)
+        aTextureCoordinates = glGetAttribLocation(program, A_TEXTURE_COORDINATES)
 
         // Bind our data, specified by the variable vertexData, to the vertex
         // attribute at location of A_POSITION.
         mVertexData.position(0)
-        GLES20.glVertexAttribPointer(
+        glVertexAttribPointer(
             aPosition,
             POSITION_COMPONENT_COUNT,
-            GLES20.GL_FLOAT,
+            GL_FLOAT,
             false,
             STRIDE,
             mVertexData
         )
-        GLES20.glEnableVertexAttribArray(aPosition)
+        glEnableVertexAttribArray(aPosition)
 
         // Bind our data, specified by the variable vertexData, to the vertex
         // attribute at location A_TEXTURE_COORDINATES.
         mVertexData.position(POSITION_COMPONENT_COUNT) // starts right after the vertex (x, y) coordinates
-        GLES20.glVertexAttribPointer(
+        glVertexAttribPointer(
             aTextureCoordinates,
             TEXTURE_COORDINATES_COMPONENT_COUNT,
-            GLES20.GL_FLOAT,
+            GL_FLOAT,
             false,
             STRIDE,
             mVertexData
         )
-        GLES20.glEnableVertexAttribArray(aTextureCoordinates)
+        glEnableVertexAttribArray(aTextureCoordinates)
 
         mTexture = loadTextureFromBitmap(mBitmap)
         // Recycle the bitmap, since its data has been loaded into OpenGL.
@@ -324,7 +317,7 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
     override fun onSurfaceChanged(gl10: GL10, width: Int, height: Int) {
         Log.v(TAG, "onSurfaceChanged")
         // Set the OpenGL viewport to fill the entire surface.
-        GLES20.glViewport(0, 0, width, height)
+        glViewport(0, 0, width, height)
 
         /*
         frustum は lookAtM で決定される視軸に対して相対的な視界範囲を決めるという形で使われるものと思われ、
@@ -368,22 +361,22 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
             mProjectionMatrix, 0, mViewMatrix, 0
         )
         // Pass the matrix into the shader program.
-        GLES20.glUniformMatrix4fv(uMVPMatrix, 1, false, mVPMatrix, 0)
+        glUniformMatrix4fv(uMVPMatrix, 1, false, mVPMatrix, 0)
 
         // Set the active texture unit to texture unit 0.
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        glActiveTexture(GL_TEXTURE0)
         // Bind the texture to this unit.
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTexture)
+        glBindTexture(GL_TEXTURE_2D, mTexture)
         // Tell the texture uniform sampler to use this texture in the shader by
         // telling it to read from texture unit 0.
-        GLES20.glUniform1i(uTextureUnit, 0)
+        glUniform1i(uTextureUnit, 0)
     }
 
     override fun onDrawFrame(gl10: GL10) {
         // Clear the rendering surface.
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT)
 
         // Draw a tile.
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4) // N 字形の順に描く
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4) // N 字形の順に描く
     }
 }
