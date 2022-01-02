@@ -23,7 +23,7 @@ import javax.microedition.khronos.opengles.GL10
  * MainActivity はその他の UI のコードなども盛り込まれることになるので、コードの見通しが悪くなり、
  * あまり実用的ではないので、素直に分離している。
  */
-class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
+class Renderer(context: Context, drawableResourceId: Int) : GLSurfaceView.Renderer {
 
     companion object {
         private val TAG = Renderer::class.simpleName
@@ -38,6 +38,7 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         // 別々であるため、次の頂点を処理する際に、4 つ分のバイト数をスキップする必要が生じる。
         private const val STRIDE =
             (POSITION_COMPONENT_COUNT + TEXTURE_COORDINATES_COMPONENT_COUNT) * BYTES_PER_FLOAT
+
         private val TILE = floatArrayOf(
             // x, y, s, t
             0f, 0f, 0f, 0f,    // 左下
@@ -46,15 +47,9 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
             256f, 256f, 1f, 1f // 右上
         )
 
-        // Attributes
+        private const val U_MVP_MATRIX = "u_MvpMatrix"
         private const val A_POSITION = "a_Position"
         private const val A_TEXTURE_COORDINATES = "a_TextureCoordinates"
-
-        // Uniforms
-        private const val U_MVP_MATRIX = "u_MVPMatrix"
-        private const val U_TEXTURE_UNIT = "u_TextureUnit"
-
-        // Varyings
         private const val V_TEXTURE_COORDINATES = "v_TextureCoordinates"
 
         private const val VERTEX_SHADER = """
@@ -67,6 +62,8 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
                 $V_TEXTURE_COORDINATES = $A_TEXTURE_COORDINATES;
             }
         """
+
+        private const val U_TEXTURE_UNIT = "u_TextureUnit"
 
         private const val FRAGMENT_SHADER = """
             precision mediump float;
@@ -81,8 +78,8 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          * Compiles a shader, returning the OpenGL object ID.
          *
          * @see <a href="https://media.pragprog.com/titles/kbogla/code/AirHockey1/src/com/airhockey/android/util/ShaderHelper.java">OpenGL ES 2 for Android</a>
-         * @param type       GL_VERTEX_SHADER or GL_FRAGMENT_SHADER
-         * @param shaderCode String data of shader code
+         * @param [type]       GL_VERTEX_SHADER or GL_FRAGMENT_SHADER
+         * @param [shaderCode] String data of shader code
          * @return the OpenGL object ID (or 0 if compilation failed)
          */
         private fun compileShader(type: Int, shaderCode: String): Int {
@@ -128,8 +125,8 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          * program. Returns the OpenGL program object ID, or 0 if linking failed.
          *
          * @see <a href="https://media.pragprog.com/titles/kbogla/code/AirHockey1/src/com/airhockey/android/util/ShaderHelper.java">OpenGL ES 2 for Android</a>
-         * @param vertexShaderId   OpenGL object ID of vertex shader
-         * @param fragmentShaderId OpenGL object ID of fragment shader
+         * @param [vertexShaderId]   OpenGL object ID of vertex shader
+         * @param [fragmentShaderId] OpenGL object ID of fragment shader
          * @return OpenGL program object ID (or 0 if linking failed)
          */
         private fun linkProgram(vertexShaderId: Int, fragmentShaderId: Int): Int {
@@ -174,7 +171,7 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
          * Validates an OpenGL program. Should only be called when developing the application.
          *
          * @see <a href="https://media.pragprog.com/titles/kbogla/code/AirHockey1/src/com/airhockey/android/util/ShaderHelper.java">OpenGL ES 2 for Android</a>
-         * @param programObjectId OpenGL program object ID to validate
+         * @param [programObjectId] OpenGL program object ID to validate
          * @return boolean
          */
         private fun validateProgram(programObjectId: Int): Boolean {
@@ -190,7 +187,7 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         }
 
         /**
-         * @param bitmap Loads a texture from a Bitmap
+         * @param [bitmap] Loads a texture from a Bitmap
          * @return OpenGL ID for the texture. Returns 0 if the load failed.
          */
         fun loadTextureFromBitmap(bitmap: Bitmap): Int {
@@ -223,8 +220,8 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         }
 
         /**
-         * @param context Context オブジェクト
-         * @param resourceId R.drawable.XXX
+         * @param [context]    Context オブジェクト
+         * @param [resourceId] R.drawable.XXX
          * @return Bitmap オブジェクト
          */
         fun loadBitmap(context: Context, resourceId: Int): Bitmap? {
@@ -241,27 +238,28 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         }
     }
 
-    private var aPosition = 0
-    private var aTextureCoordinates = 0
-    private var uMVPMatrix = 0
-    private var uTextureUnit = 0
+    private val bitmap: Bitmap? = loadBitmap(context, drawableResourceId)
 
     // JavaVM (float) -> DirectBuffer (FloatBuffer) -> OpenGL
-    private val mVertexData: FloatBuffer = ByteBuffer
+    private val vertexData: FloatBuffer = ByteBuffer
         .allocateDirect(TILE.size * BYTES_PER_FLOAT)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer()
         .put(TILE)
 
-    private val mProjectionMatrix = FloatArray(16)
-    private val mViewMatrix = FloatArray(16)
-    private val mVPMatrix = FloatArray(16)
+    private var uMvpMatrix = 0
+    private var aPosition = 0
+    private var aTextureCoordinates = 0
+    private var uTextureUnit = 0
+    private var texture = 0
 
-    private var mTexture = 0
+    private val projectionMatrix = FloatArray(16)
+    private val viewMatrix = FloatArray(16)
+    private val vpMatrix = FloatArray(16)
 
     override fun onSurfaceCreated(gl10: GL10, eglConfig: EGLConfig) {
         Log.v(TAG, "onSurfaceCreated")
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+        glClearColor(0f, 0f, 0f, 0f)
 
         // Compile the shaders.
         val vertexShader = compileShader(GL_VERTEX_SHADER, VERTEX_SHADER)
@@ -273,44 +271,14 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
 
         // Use this program.
         glUseProgram(program)
-
-        // Retrieve uniform locations for the shader program.
-        uMVPMatrix = glGetUniformLocation(program, U_MVP_MATRIX)
-        uTextureUnit = glGetUniformLocation(program, U_TEXTURE_UNIT)
-
-        // Retrieve attribute locations for the shader program.
+        uMvpMatrix = glGetUniformLocation(program, U_MVP_MATRIX)
         aPosition = glGetAttribLocation(program, A_POSITION)
         aTextureCoordinates = glGetAttribLocation(program, A_TEXTURE_COORDINATES)
+        uTextureUnit = glGetUniformLocation(program, U_TEXTURE_UNIT)
 
-        // Bind our data, specified by the variable vertexData, to the vertex
-        // attribute at location of A_POSITION.
-        mVertexData.position(0)
-        glVertexAttribPointer(
-            aPosition,
-            POSITION_COMPONENT_COUNT,
-            GL_FLOAT,
-            false,
-            STRIDE,
-            mVertexData
-        )
-        glEnableVertexAttribArray(aPosition)
-
-        // Bind our data, specified by the variable vertexData, to the vertex
-        // attribute at location A_TEXTURE_COORDINATES.
-        mVertexData.position(POSITION_COMPONENT_COUNT) // starts right after the vertex (x, y) coordinates
-        glVertexAttribPointer(
-            aTextureCoordinates,
-            TEXTURE_COORDINATES_COMPONENT_COUNT,
-            GL_FLOAT,
-            false,
-            STRIDE,
-            mVertexData
-        )
-        glEnableVertexAttribArray(aTextureCoordinates)
-
-        mTexture = loadTextureFromBitmap(mBitmap)
+        texture = loadTextureFromBitmap(bitmap!!)
         // Recycle the bitmap, since its data has been loaded into OpenGL.
-        mBitmap.recycle()
+        bitmap.recycle()
     }
 
     override fun onSurfaceChanged(gl10: GL10, width: Int, height: Int) {
@@ -336,7 +304,7 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         ピクセルサイズに基くことが可能となる。
          */
         Matrix.frustumM(
-            mProjectionMatrix, 0,
+            projectionMatrix, 0,
             -width / 4f, width / 4f, -height / 4f, height / 4f,
             width / 4f, width / 2f
         )
@@ -350,22 +318,22 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         eyeZ = -eyeX となっているわけである。
          */
         Matrix.setLookAtM(
-            mViewMatrix, 0,
+            viewMatrix, 0,
             width / 2f, height / 2f, -width / 2f,
             width / 2f, height / 2f, 1f,
             0f, -1f, 0f
         )
         Matrix.multiplyMM(
-            mVPMatrix, 0,
-            mProjectionMatrix, 0, mViewMatrix, 0
+            vpMatrix, 0,
+            projectionMatrix, 0, viewMatrix, 0
         )
         // Pass the matrix into the shader program.
-        glUniformMatrix4fv(uMVPMatrix, 1, false, mVPMatrix, 0)
+        glUniformMatrix4fv(uMvpMatrix, 1, false, vpMatrix, 0)
 
         // Set the active texture unit to texture unit 0.
         glActiveTexture(GL_TEXTURE0)
         // Bind the texture to this unit.
-        glBindTexture(GL_TEXTURE_2D, mTexture)
+        glBindTexture(GL_TEXTURE_2D, texture)
         // Tell the texture uniform sampler to use this texture in the shader by
         // telling it to read from texture unit 0.
         glUniform1i(uTextureUnit, 0)
@@ -375,7 +343,32 @@ class Renderer(private val mBitmap: Bitmap) : GLSurfaceView.Renderer {
         // Clear the rendering surface.
         glClear(GL_COLOR_BUFFER_BIT)
 
-        // Draw a tile.
+        // Bind our data, specified by the variable vertexData, to the vertex
+        // attribute at location of A_POSITION.
+        vertexData.position(0)
+        glVertexAttribPointer(
+            aPosition,
+            POSITION_COMPONENT_COUNT,
+            GL_FLOAT,
+            false,
+            STRIDE,
+            vertexData
+        )
+        glEnableVertexAttribArray(aPosition)
+
+        // Bind our data, specified by the variable vertexData, to the vertex
+        // attribute at location A_TEXTURE_COORDINATES.
+        vertexData.position(POSITION_COMPONENT_COUNT) // starts right after the vertex (x, y) coordinates
+        glVertexAttribPointer(
+            aTextureCoordinates,
+            TEXTURE_COORDINATES_COMPONENT_COUNT,
+            GL_FLOAT,
+            false,
+            STRIDE,
+            vertexData
+        )
+        glEnableVertexAttribArray(aTextureCoordinates)
+
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4) // N 字形の順に描く
     }
 }
