@@ -23,7 +23,7 @@ import javax.microedition.khronos.opengles.GL10
  * MainActivity はその他の UI のコードなども盛り込まれることになるので、コードの見通しが悪くなり、
  * あまり実用的ではないので、素直に分離している。
  */
-class Renderer(context: Context, drawableResourceId: Int) : GLSurfaceView.Renderer {
+class Renderer(context: Context) : GLSurfaceView.Renderer {
 
     companion object {
         private val TAG = Renderer::class.simpleName
@@ -238,7 +238,7 @@ class Renderer(context: Context, drawableResourceId: Int) : GLSurfaceView.Render
         }
     }
 
-    private val bitmap: Bitmap? = loadBitmap(context, drawableResourceId)
+    private val bitmap: Bitmap? = loadBitmap(context, R.drawable.map)
 
     // JavaVM (float) -> DirectBuffer (FloatBuffer) -> OpenGL
     private val vertexData: FloatBuffer = ByteBuffer
