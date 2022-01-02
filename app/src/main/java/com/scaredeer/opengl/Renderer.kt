@@ -329,6 +329,11 @@ class Renderer(context: Context) : GLSurfaceView.Renderer {
         )
         // Pass the matrix into the shader program.
         glUniformMatrix4fv(uMvpMatrix, 1, false, vpMatrix, 0)
+    }
+
+    override fun onDrawFrame(gl10: GL10) {
+        // Clear the rendering surface.
+        glClear(GL_COLOR_BUFFER_BIT)
 
         // Set the active texture unit to texture unit 0.
         glActiveTexture(GL_TEXTURE0)
@@ -337,11 +342,6 @@ class Renderer(context: Context) : GLSurfaceView.Renderer {
         // Tell the texture uniform sampler to use this texture in the shader by
         // telling it to read from texture unit 0.
         glUniform1i(uTextureUnit, 0)
-    }
-
-    override fun onDrawFrame(gl10: GL10) {
-        // Clear the rendering surface.
-        glClear(GL_COLOR_BUFFER_BIT)
 
         // Bind our data, specified by the variable vertexData, to the vertex
         // attribute at location of A_POSITION.
